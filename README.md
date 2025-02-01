@@ -23,6 +23,24 @@
 		}
     }
 
+## Optional add Exception Handlers
+	internal class DbExceptionHandler : IExceptionHandler
+    {
+        public void Handle(ref Exception exception)
+        {
+            if (exception is DbException db)
+            {
+                switch(db.SqlState) {
+                    case "23503": 
+                        exception = new ForeignKeyException(exception.Message, exception); 
+                        break;
+                }
+            }
+        }
+    }
+	
+	ExceptionHandlerManager.Register(new DbExceptionHandler());
+
 ## Examples
 ### API Server
     public class DataApiService<T> {

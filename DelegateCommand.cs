@@ -1,13 +1,13 @@
 ﻿namespace CommandMiddleware
 {
-	using System;
-	using System.Reflection;
+    using System;
+    using System.Reflection;
 
-	internal class DelegateCommand : Command
+    internal class DelegateCommand : Command
     {
         private readonly Delegate @delegate;
 
-        public DelegateCommand(string name, Delegate @delegate) : base(name)
+        public DelegateCommand(string name, Delegate @delegate, bool? allowAnonymous = null, bool? rawResult = null) : base(name, allowAnonymous, rawResult)
         {
             this.@delegate = @delegate;
         }

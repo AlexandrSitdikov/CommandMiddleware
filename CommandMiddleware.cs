@@ -7,28 +7,37 @@
 	using System.Text.Json;
 	using System.Threading.Tasks;
 
+	using Exceptions;
+
 	using Microsoft.AspNetCore.Http;
 	using Microsoft.Extensions.Primitives;
 
-	internal static class CommandMiddleware
+	public static class CommandMiddleware
     {
         private static object errorObj = new
         {
             success = false
         };
 
+        public static string Prefix { get; set; } = "/api";
+
 		public static Func<object?, string> Serializer { get; set; } = obj => JsonSerializer.Serialize(obj);
 
 		public static Func<string, Type, object?> DeSerializer { get; set; } = (json, type) => JsonSerializer.Deserialize(json, type);
 
+        /// <summary>
+        /// Url parts after <see cref="Prefix"/> to command name
+        /// </summary>
+        public static Func<string[], HttpRequest, string?> CommandNameParser { get; set; } = (x, r) => x.FirstOrDefault();
+
 		public static async Task InvokeAsync(HttpContext context, Func<Task> next)
         {
             var r = context.Request;
-            if (r.Path.StartsWithSegments("/api")) // TODO: в настройку
+            if (r.Path.StartsWithSegments(Prefix)) // TODO: в настройку
             {
-                var path = r.Path.Value?.Substring(5).Split('/'); // "/api/".Length
+                var path = r.Path.Value?.Substring(Prefix.Length + 1).Split('/'); // "/api/".Length
 
-                var actionName = path.FirstOrDefault(); // /api/commandName
+                var actionName = CommandNameParser(path, r); // /api/commandName
                 if (!string.IsNullOrEmpty(actionName) && CommandManager.TryGetCommand(actionName, out var commandInfo))
                 {
                     try
@@ -70,7 +79,7 @@
 
                         if (ex != null)
                         {
-                            //ExceptionHandlerManager.Handle(ref ex);
+                            ExceptionHandlerManager.Handle(ref ex);
                             var type = ex.GetType().Name;
 
                             await context.Response.WriteAsync(Serializer(new
@@ -108,7 +117,7 @@
                     {
                         using (var reader = new StreamReader(r.Body))
                         {
-                            parValues[i++] = DeSerializer(reader.ReadToEnd(), parameters[0].ParameterType);
+                            parValues[i++] = DeSerializer(await reader.ReadToEndAsync(), parameters[0].ParameterType);
                         }
                     }
                     catch (System.Text.Json.JsonException ex)
